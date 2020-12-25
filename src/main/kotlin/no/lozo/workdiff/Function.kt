@@ -25,7 +25,7 @@ class Function {
         if (!diffRequest.body.isPresent) {
             return diffRequest.createResponseBuilder(HttpStatus.BAD_REQUEST)
                 .body("Document not found.")
-                .build();
+                .build()
         }
 
         val (workspaceId, apiKey, startString, endString, hoursInWorkday) = diffRequest.body.get()
