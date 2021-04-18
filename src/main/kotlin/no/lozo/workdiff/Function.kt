@@ -6,8 +6,8 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.beust.klaxon.Klaxon
 import no.lozo.workdiff.clockify.ClockifyClient
-import no.lozo.workdiff.dto.HandlerInput
-import no.lozo.workdiff.dto.HandlerOutput
+import no.lozo.workdiff.dto.DiffRequest
+import no.lozo.workdiff.dto.DiffResponse
 import java.lang.RuntimeException
 import java.time.LocalDate
 import kotlin.time.DurationUnit
@@ -19,24 +19,22 @@ class Function : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResp
 
     override fun handleRequest(event: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent {
         try {
-            val input = Klaxon().parse<HandlerInput>(event.body)!!
-            val start = LocalDate.parse(input.startDate)
-            val end = LocalDate.parse(input.endDate)
+            val requestBody = Klaxon().parse<DiffRequest>(event.body)!!
+            val start = LocalDate.parse(requestBody.startDate)
+            val end = LocalDate.parse(requestBody.endDate)
 
             val loggedSeconds =
-                ClockifyClient.getSummaryReport(input.workspaceId, input.apiKey, start, end).toDuration(DurationUnit.SECONDS)
+                ClockifyClient.getSummaryReport(requestBody.workspaceId, requestBody.apiKey, start, end)
+                    .toDuration(DurationUnit.SECONDS)
             val workingDays = calculateWorkDays(start, end)
-            val workingSeconds = workingDays.times(input.hoursInWorkday).times(60).times(60).toDuration(DurationUnit.SECONDS)
+            val workingSeconds =
+                workingDays.times(requestBody.hoursInWorkday).times(60).times(60).toDuration(DurationUnit.SECONDS)
             val diffSeconds = loggedSeconds.minus(workingSeconds)
 
-            val output = HandlerOutput(
-                loggedSeconds.inHours,
-                workingSeconds.inHours,
-                diffSeconds.inHours
-            )
-
             val headers = mapOf(Pair("Access-Control-Allow-Origin", "*"))
-            return APIGatewayProxyResponseEvent().withBody(Klaxon().toJsonString(output)).withHeaders(headers)
+            val responseBody = DiffResponse(loggedSeconds.inHours, workingSeconds.inHours, diffSeconds.inHours)
+
+            return APIGatewayProxyResponseEvent().withBody(Klaxon().toJsonString(responseBody)).withHeaders(headers)
 
         } catch (e: RuntimeException) {
             return APIGatewayProxyResponseEvent().withStatusCode(500).withBody(e.stackTraceToString())
