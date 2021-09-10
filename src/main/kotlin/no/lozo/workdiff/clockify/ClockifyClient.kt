@@ -24,7 +24,7 @@ object ClockifyClient {
                          end: LocalDate): Int {
 
         val startDateTime = OffsetDateTime.of(start, LocalTime.of(0,0,1), ZoneOffset.UTC).withNano(0)
-        val endDateTime = OffsetDateTime.of(end, LocalTime.now(), ZoneOffset.UTC).withNano(0)
+        val endDateTime = OffsetDateTime.of(end.plusDays(1), LocalTime.of(0,0,1), ZoneOffset.UTC).withNano(0)
 
         val postBody =
                 """
